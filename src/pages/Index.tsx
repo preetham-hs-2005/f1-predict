@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -10,12 +10,18 @@ import {
   BarChart3,
   Users2,
   Timer,
+  Menu,
+  Radio,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { BrandMark } from "@/components/layout/BrandMark";
 import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
+import RaceCard from "@/components/dashboard/RaceCard";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { getUpcomingRacesFromServer, type ServerRace } from "@/lib/api/races";
+import type { RaceWeekend } from "@/lib/data/raceCalendar";
 
 const STEPS = [
   { num: "01", label: "Pick podium, pole, constructor" },
@@ -55,19 +61,56 @@ const STATS = [
   { value: "Live", label: "Standings", icon: BarChart3 },
 ];
 
+const toRaceWeekend = (race: ServerRace): RaceWeekend => ({
+  id: race.raceId,
+  raceName: race.raceName,
+  circuitName: race.circuitName,
+  country: race.country,
+  countryFlag: race.countryFlag,
+  round: race.round,
+  qualifyingStartTime: race.qualifyingStartTime,
+  raceStartTime: race.raceStartTime,
+  sprintWeekend: race.sprintWeekend,
+  sprintQualifyingStartTime: race.sprintQualifyingStartTime,
+  sprintStartTime: race.sprintStartTime,
+  timeZone: race.timeZone,
+  cancelled: race.cancelled,
+  isLocked: race.isLocked,
+  isComplete: race.isComplete,
+});
+
 const Index = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const heroRef = useRef<HTMLDivElement>(null);
+  const [nextRace, setNextRace] = useState<RaceWeekend | null>(null);
+  const [isRaceLoading, setIsRaceLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) navigate("/dashboard");
   }, [isLoading, isAuthenticated, navigate]);
 
-  /* Parallax tilt on hero text */
+  useEffect(() => {
+    let active = true;
+
+    getUpcomingRacesFromServer()
+      .then((races) => {
+        if (active && races[0]) setNextRace(toRaceWeekend(races[0]));
+      })
+      .finally(() => {
+        if (active) setIsRaceLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  /* Parallax tilt on hero text, unless the user requests less motion. */
   useEffect(() => {
     const el = heroRef.current;
-    if (!el) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!el || reduceMotion) return;
     const handle = (e: MouseEvent) => {
       const { clientX, clientY, currentTarget } = e;
       const { width, height, left, top } = (
@@ -92,7 +135,7 @@ const Index = () => {
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-3">
           <BrandMark />
-          <nav className="flex items-center gap-2">
+          <nav className="hidden items-center gap-2 sm:flex" aria-label="Primary navigation">
             <Link to="/standings">
               <Button variant="ghost" size="sm" className="data-mono hidden text-xs uppercase tracking-widest text-muted-foreground hover:text-white sm:flex">
                 Standings
@@ -113,6 +156,33 @@ const Index = () => {
               </Button>
             </Link>
           </nav>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="sm:hidden" aria-label="Open navigation menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[min(88vw,360px)] border-l-border bg-surface-1 p-6">
+              <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+              <div className="mt-10 flex flex-col gap-2">
+                <SheetClose asChild>
+                  <Link to="/standings">
+                    <Button variant="cockpit" className="data-mono w-full justify-start text-xs uppercase tracking-widest">Standings</Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link to="/login">
+                    <Button variant="ghost" className="data-mono w-full justify-start text-xs uppercase tracking-widest">Sign In</Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link to="/register">
+                    <Button variant="signal" className="data-mono w-full justify-start text-xs uppercase tracking-widest">Join now <ChevronRight className="ml-auto h-4 w-4" /></Button>
+                  </Link>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 
@@ -154,7 +224,7 @@ const Index = () => {
           {/* Big headline with 3-D tilt */}
           <div
             ref={heroRef}
-            style={{ transition: "transform 0.15s ease-out", willChange: "transform" }}
+            className="hero-tilt"
           >
             <h1 className="display mt-6 max-w-5xl text-[clamp(2.8rem,9vw,7.5rem)] font-black leading-[0.88] tracking-tight text-white">
               Predict.
@@ -215,6 +285,34 @@ const Index = () => {
                 </span>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── NEXT RACE ── */}
+        <section className="relative border-y border-border bg-surface-1/50">
+          <div className="mx-auto grid max-w-[1400px] gap-8 px-5 py-16 sm:px-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(360px,1.2fr)] lg:items-center lg:px-10">
+            <div>
+              <div className="flex items-center gap-3">
+                <Radio className="h-4 w-4 text-signal" />
+                <span className="page-eyebrow tracking-[0.25em]">Live race desk</span>
+              </div>
+              <h2 className="display mt-5 max-w-md text-3xl font-black leading-tight text-white sm:text-4xl">Know exactly when your next pick locks.</h2>
+              <p className="mt-4 max-w-lg leading-7 text-muted-foreground">Your next race weekend, session countdown, and prediction window are all in one place. Join now so you are ready before qualifying begins.</p>
+              <Link to="/register" className="mt-7 inline-block">
+                <Button variant="signal" className="data-mono gap-2 text-xs uppercase tracking-widest">Create your account <ArrowRight className="h-4 w-4" /></Button>
+              </Link>
+            </div>
+            {isRaceLoading ? (
+              <div className="panel panel-corners min-h-[350px] animate-pulse bg-surface-2/50" aria-label="Loading next race" />
+            ) : nextRace ? (
+              <RaceCard race={nextRace} featured />
+            ) : (
+              <div className="panel panel-corners flex min-h-[350px] flex-col items-center justify-center p-8 text-center">
+                <Flag className="h-8 w-8 text-signal" />
+                <h3 className="display mt-4 text-xl font-bold text-white">Calendar updating</h3>
+                <p className="data-mono mt-2 max-w-sm text-xs uppercase leading-6 text-muted-foreground">The next race weekend will appear here as soon as it is available.</p>
+              </div>
+            )}
           </div>
         </section>
 
