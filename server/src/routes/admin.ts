@@ -15,6 +15,7 @@ import {
   isOpenF1RateLimitError,
   OpenF1Session,
 } from "../services/openf1Service.js";
+import { calculatePredictionScore } from "../utils/scoring.js";
 
 const router = Router();
 let lastRaceEnrichmentRateLimitLogAt = 0;
@@ -513,54 +514,23 @@ router.post("/results", async (req: Request, res: Response) => {
       const currentScore = await scoresCollection.findOne({ userId: prediction.userId, raceId, type });
       let unexpectedPoints = currentScore?.unexpectedPoints || 0; // Retain admin approval points
       
-      // Points modifier based on race or sprint validation
-      const multiplier = type === "sprint" ? 0.5 : 1;
-      
-      let p1Points = currentScore?.p1Points || 0;
-      let p2Points = currentScore?.p2Points || 0;
-      let p3Points = currentScore?.p3Points || 0;
-      let polePoints = currentScore?.polePoints || 0;
-      let podiumBonusPoints = currentScore?.podiumBonusPoints || 0;
-      let constructorPoints = currentScore?.constructorPoints || 0;
+      // Use the shared scoring engine (single source of truth for point values)
+      const resultFields = {
+        p1: p1 || currentScore?.p1,
+        p2: p2 || currentScore?.p2,
+        p3: p3 || currentScore?.p3,
+        pole: pole || currentScore?.pole,
+        bestConstructor: bestConstructor || currentScore?.bestConstructor,
+      };
+      const scored = calculatePredictionScore(prediction, resultFields, type);
 
-      // Check each position (only if provided in payload)
-      if (p1 !== undefined && p1 !== "") {
-        p1Points = prediction.predictedP1 === p1 ? (25 * multiplier) : 0;
-      }
-      if (p2 !== undefined && p2 !== "") {
-        p2Points = prediction.predictedP2 === p2 ? (20 * multiplier) : 0;
-      }
-      if (p3 !== undefined && p3 !== "") {
-        p3Points = prediction.predictedP3 === p3 ? (15 * multiplier) : 0;
-      }
-      if (pole !== undefined && pole !== "") {
-        polePoints = prediction.predictedPole === pole ? (10 * multiplier) : 0;
-      }
-      
-      // Best Constructor logic (10 points)
-      if (bestConstructor !== undefined && bestConstructor !== "") {
-        if (prediction.predictedConstructor && prediction.predictedConstructor === bestConstructor) {
-          constructorPoints = (10 * multiplier);
-        } else {
-          constructorPoints = 0;
-        }
-      }
-
-      // Podium bonus (all three correct), evaluate only if all podium fields are passed or already exist
-      const checkP1 = p1 || currentScore?.p1;
-      const checkP2 = p2 || currentScore?.p2;
-      const checkP3 = p3 || currentScore?.p3;
-      if (checkP1 && checkP2 && checkP3) {
-        if (
-          prediction.predictedP1 === checkP1 &&
-          prediction.predictedP2 === checkP2 &&
-          prediction.predictedP3 === checkP3
-        ) {
-          podiumBonusPoints = (20 * multiplier);
-        } else {
-          podiumBonusPoints = 0;
-        }
-      }
+      // For partial result updates, preserve existing points for fields not in this payload
+      const p1Points = (p1 !== undefined && p1 !== "") ? scored.p1Points : (currentScore?.p1Points || 0);
+      const p2Points = (p2 !== undefined && p2 !== "") ? scored.p2Points : (currentScore?.p2Points || 0);
+      const p3Points = (p3 !== undefined && p3 !== "") ? scored.p3Points : (currentScore?.p3Points || 0);
+      const polePoints = (pole !== undefined && pole !== "") ? scored.polePoints : (currentScore?.polePoints || 0);
+      const podiumBonusPoints = (resultFields.p1 && resultFields.p2 && resultFields.p3) ? scored.podiumBonusPoints : (currentScore?.podiumBonusPoints || 0);
+      const constructorPoints = (bestConstructor !== undefined && bestConstructor !== "") ? scored.constructorPoints : (currentScore?.constructorPoints || 0);
 
       const total = p1Points + p2Points + p3Points + polePoints + podiumBonusPoints + unexpectedPoints + constructorPoints;
 
@@ -671,27 +641,20 @@ router.post("/scores/:userId/award-unexpected", async (req: Request, res: Respon
         type,
       });
 
-      // Calculate race points (including dynamic multiplier)
-      const multiplier = type === "sprint" ? 0.5 : 1;
-      let p1Points = 0, p2Points = 0, p3Points = 0, polePoints = 0, podiumBonusPoints = 0;
+      // Use shared scoring engine (single source of truth for point values)
+      let p1Points = 0, p2Points = 0, p3Points = 0, polePoints = 0, podiumBonusPoints = 0, constructorPoints = 0;
       
       if (prediction && result) {
-        if (prediction.predictedP1 === result.p1) p1Points = 25 * multiplier;
-        if (prediction.predictedP2 === result.p2) p2Points = 20 * multiplier;
-        if (prediction.predictedP3 === result.p3) p3Points = 15 * multiplier;
-        if (prediction.predictedPole === result.pole) polePoints = 10 * multiplier;
-        
-        // Podium bonus
-        if (
-          prediction.predictedP1 === result.p1 &&
-          prediction.predictedP2 === result.p2 &&
-          prediction.predictedP3 === result.p3
-        ) {
-          podiumBonusPoints = 20 * multiplier;
-        }
+        const scored = calculatePredictionScore(prediction, result, type);
+        p1Points = scored.p1Points;
+        p2Points = scored.p2Points;
+        p3Points = scored.p3Points;
+        polePoints = scored.polePoints;
+        podiumBonusPoints = scored.podiumBonusPoints;
+        constructorPoints = scored.constructorPoints;
       }
 
-      const raceTotal = p1Points + p2Points + p3Points + polePoints + podiumBonusPoints;
+      const raceTotal = p1Points + p2Points + p3Points + polePoints + podiumBonusPoints + constructorPoints;
       
       const newScore = {
         userId,
@@ -1113,23 +1076,9 @@ router.post("/rescore-race", async (req: Request, res: Response) => {
         continue;
       }
 
-      let p1Points = 0, p2Points = 0, p3Points = 0, polePoints = 0, podiumBonusPoints = 0;
-
-      if (prediction.predictedP1 === result.p1) p1Points = 25;
-      if (prediction.predictedP2 === result.p2) p2Points = 18;
-      if (prediction.predictedP3 === result.p3) p3Points = 15;
-      if (prediction.predictedPole === result.pole) polePoints = 5;
-
-      // Podium bonus
-      if (
-        prediction.predictedP1 === result.p1 &&
-        prediction.predictedP2 === result.p2 &&
-        prediction.predictedP3 === result.p3
-      ) {
-        podiumBonusPoints = 10;
-      }
-
-      const raceTotal = p1Points + p2Points + p3Points + polePoints + podiumBonusPoints;
+      // Use shared scoring engine (single source of truth for point values)
+      const scored = calculatePredictionScore(prediction, result, type);
+      const { p1Points, p2Points, p3Points, polePoints, podiumBonusPoints, constructorPoints, raceTotal } = scored;
 
       // Get existing score if it exists (preserve unexpected points)
       const existingScore = await scoresCollection.findOne({
@@ -1154,6 +1103,7 @@ router.post("/rescore-race", async (req: Request, res: Response) => {
             p3Points,
             polePoints,
             podiumBonusPoints,
+            constructorPoints,
             unexpectedPoints,
             total,
             updatedAt: new Date(),
