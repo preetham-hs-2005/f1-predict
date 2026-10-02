@@ -17,16 +17,13 @@ Keep the current `MONGODB_URI` and `JWT_SECRET` values. Changing `JWT_SECRET` si
 | `NODE_ENV` | `production` |
 | `APP_URL` | `https://f1predict.dev` |
 | `CORS_ORIGINS` | `https://f1predict.dev,https://www.f1predict.dev,https://f1-predictor-pro-six.vercel.app` |
-| `SMTP_HOST` | `smtp.resend.com` |
-| `SMTP_PORT` | `465` |
-| `SMTP_USER` | `resend` |
-| `SMTP_PASS` | Your Resend sending API key (`re_...`); store in Render, never Git |
+| `RESEND_API_KEY` | Your Resend sending API key (`re_...`); store in Render, never Git. The existing `SMTP_PASS` value is also accepted. |
 | `SMTP_FROM` | `F1 Predictor Pro <noreply@f1predict.dev>` |
 | `REMINDER_JOB_SECRET` | A unique random value of at least 32 characters, shared only with GitHub Actions |
 
 If the service root directory is `server`, use build command `npm ci --include=dev && npm run build` and start command `node dist/server.js`. If its root directory is the repository root, use `cd server && npm ci --include=dev && npm run build` and `cd server && node dist/server.js`. Set the HTTP health-check path to `/health`. Keep any existing `PORT` setting; Render supplies one automatically if omitted.
 
-The API sends password-reset mail directly. Registration creates a welcome-mail job in MongoDB, so the job runner below is required to deliver it.
+The API sends mail through Resend's HTTPS API. Render Free blocks outgoing SMTP ports, so SMTP transport cannot deliver production mail. Password-reset mail is sent directly; registration creates a welcome-mail job in MongoDB, so the job runner below is required to deliver it.
 
 ## 3. Free mail and reminder runner with GitHub Actions
 
