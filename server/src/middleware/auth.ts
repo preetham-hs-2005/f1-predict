@@ -43,9 +43,14 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function requireVerifiedEmail(req: Request, res: Response, next: NextFunction) {
-  const user = req.user && await User.findById(req.user.userId);
-  if (!user?.emailVerifiedAt) {
-    return res.status(403).json({ success: false, error: "Verify your email before making predictions." });
+  try {
+    const user = req.user && await User.findById(req.user.userId);
+    if (!user?.emailVerifiedAt) {
+      return res.status(403).json({ success: false, error: "Verify your email before making predictions." });
+    }
+    next();
+  } catch (error) {
+    console.error("Email verification check failed:", error);
+    return res.status(503).json({ success: false, error: "Could not confirm email verification. Please try again." });
   }
-  next();
 }
