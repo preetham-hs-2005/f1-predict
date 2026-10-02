@@ -1,16 +1,16 @@
 # Production deployment: Vercel + Render
 
-The website is served by Vercel at `https://f1predict.dev` (also `https://f1-predictor-pro-six.vercel.app`). Its API is the existing Render web service at `https://f1-predictor-pro.onrender.com`. Both should deploy from the repository's `main` branch.
+The website is served by Vercel at `https://f1predict.dev` (also `https://f1-predictor-pro-six.vercel.app`). Its API is the existing Render web service at `https://f1-predictor-pro.onrender.com`. Changes land on `main`; this Vercel project currently deploys production from `prod`, so release by fast-forwarding `prod` to the same commit. Verify the connected branch of the existing Render service in its dashboard.
 
 ## 1. Vercel frontend
 
 - Project root: repository root. Build command: `npm run build`. Output directory: `dist`.
 - Production environment variable: `VITE_API_URL=https://f1-predictor-pro.onrender.com`. The tracked `.env.production` has the same value, but a Vercel dashboard override takes precedence. Check it if the deployed site still calls an old API.
-- Ensure the Production Branch is `main`. A push to that branch starts a production deployment.
+- The Vercel Production Branch is currently `prod`. A push to `main` creates a preview; fast-forward `prod` to the release commit to update `f1predict.dev`.
 
 ## 2. Existing Render API web service
 
-Keep the current `MONGODB_URI` and `JWT_SECRET` values. Changing `JWT_SECRET` signs out every user. In the Render Dashboard, confirm the `f1-predictor-pro` web service uses `main` and set:
+Keep the current `MONGODB_URI` and `JWT_SECRET` values. Changing `JWT_SECRET` signs out every user. In the Render Dashboard, confirm the `f1-predictor-pro` web service is connected to this repository, check its deployment branch, and manually deploy the release commit if automatic deployment has not happened. Set:
 
 | Key | Value |
 | --- | --- |
