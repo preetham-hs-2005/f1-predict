@@ -7,7 +7,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { OpenF1SessionProvider } from "@/contexts/OpenF1SessionContext";
 import { SetUsernameModal } from "@/components/auth/SetUsernameModal";
 import { EmailVerificationPrompt } from "@/components/auth/EmailVerificationPrompt";
+import { RouteSeo } from "@/components/seo/RouteSeo";
 import Index from "./pages/Index";
+import HowItWorks from "./pages/HowItWorks";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -33,9 +35,11 @@ const App = () => (
         <Sonner />
         <SetUsernameModal />
         <BrowserRouter>
+          <RouteSeo />
           <EmailVerificationPrompt />
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

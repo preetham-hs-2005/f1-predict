@@ -1,0 +1,50 @@
+[
+  {
+    "path": "/",
+    "title": "F1 Predictor Pro | Formula 1 Race Prediction Game",
+    "description": "Predict Formula 1 podiums, pole positions and constructors before each race weekend. Follow standings, race analysis and the F1 Predictor Pro leaderboard.",
+    "heading": "Predict Formula 1 race weekends",
+    "paragraphs": [
+      "F1 Predictor Pro is an independent Formula 1 prediction game. Choose your podium, pole sitter and constructor before the session window closes, then follow the leaderboard after results are posted.",
+      "Explore championship standings and race analysis, or create an account to make predictions. F1 Predictor Pro is a fan project and is not affiliated with Formula 1."
+    ]
+  },
+  {
+    "path": "/how-it-works",
+    "title": "How F1 Predictor Pro Works | Predictions and Race Weekends",
+    "description": "Learn how to make Formula 1 race and sprint predictions, when entries lock, how email verification works, and where to find standings and race analysis.",
+    "heading": "How F1 Predictor Pro works",
+    "paragraphs": [
+      "Create an account, verify your email, and choose a race weekend. Pick your podium finishers and pole position before the prediction window closes. Sprint weekends have a separate sprint prediction when available.",
+      "Predictions lock at the relevant session start. Follow the leaderboard after results are posted, and browse championship standings and race analysis. This is an independent fan project, not an official Formula 1 service."
+    ],
+    "questions": [
+      { "question": "What is F1 Predictor Pro?", "answer": "It is an independent Formula 1 prediction game for fans. You make picks for race weekends, then follow your results and the leaderboard after the event." },
+      { "question": "What can I predict?", "answer": "Choose your podium finishers and pole sitter. The prediction form also includes a constructor pick. Sprint weekends offer a separate sprint prediction when the event schedule includes one." },
+      { "question": "When do predictions close?", "answer": "Each prediction window closes when its relevant qualifying session begins. The app shows the deadline for each race weekend, so check the live schedule before submitting." },
+      { "question": "Do I need to verify my email?", "answer": "Yes. After creating an account, enter the six-digit code sent to your email. You can browse before verification, but you must verify to create, edit or delete predictions." },
+      { "question": "Where can I follow the championship and race data?", "answer": "The standings page shows driver and constructor championship points. The race analysis page shows available results, lap, position and pit-stop data for completed events. Data availability can vary by race." },
+      { "question": "Is this an official Formula 1 website?", "answer": "No. F1 Predictor Pro is an independent fan project and is not affiliated with Formula 1 or its companies." }
+    ]
+  },
+  {
+    "path": "/standings",
+    "title": "Formula 1 Driver and Constructor Standings | F1 Predictor Pro",
+    "description": "Browse Formula 1 driver and constructor championship standings in F1 Predictor Pro, with points refreshed from a Formula 1 results feed.",
+    "heading": "Formula 1 championship standings",
+    "paragraphs": [
+      "See driver and constructor championship positions and points. The live table loads from a Formula 1 results feed when you open the page.",
+      "F1 Predictor Pro is an independent fan project and is not affiliated with Formula 1."
+    ]
+  },
+  {
+    "path": "/results",
+    "title": "Formula 1 Race Results and Analysis | F1 Predictor Pro",
+    "description": "Explore Formula 1 race results and analysis, including available lap, position and pit-stop data, in the independent F1 Predictor Pro app.",
+    "heading": "Formula 1 race results and analysis",
+    "paragraphs": [
+      "Explore completed race weekends with available results, lap records, position samples and pit-stop information. Choose a race in the app to see its analysis.",
+      "Data availability varies by event. F1 Predictor Pro is an independent fan project and is not affiliated with Formula 1."
+    ]
+  }
+]

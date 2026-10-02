@@ -11,6 +11,12 @@ Add `--skip-reset` to send just the four preview messages without replacing an e
 
 The Monday race-week email is scheduled for 9:00 AM Asia/Kolkata. Grand Prix and sprint qualifying reminders are queued from one hour until 45 minutes before each session; a runner that is down for that window skips those alerts. GitHub's free schedule may be delayed or skipped, so exact delivery time is not guaranteed. In-app alerts are stored until read and are visible from the navigation bell. Configure `VITE_API_URL` in the frontend to point to the deployed API. No email can be delivered until the Resend key is configured.
 
+## Search visibility
+
+`npm run build` generates crawlable HTML, unique titles and descriptions, canonical URLs, Open Graph previews, structured data, and `/sitemap.xml` for the public home, how-it-works, standings, and race-analysis pages. Account pages, the leaderboard, and prediction pages are marked `noindex`. The public page descriptions live in `seo/pages.json`; update them alongside page content and run `npm run test:seo` after building.
+
+After deployment, add `https://f1predict.dev` to Google Search Console and Bing Webmaster Tools, verify ownership, and submit `https://f1predict.dev/sitemap.xml` in each. Use their URL inspection tools to confirm that public pages render and account pages remain excluded. Search visibility and AI citations are determined by each service and are not guaranteed by metadata alone.
+
 A full-stack web application for Formula 1 enthusiasts to make race predictions, track predictions against actual results, and compete on a live leaderboard.
 
 ## 📋 Table of Contents

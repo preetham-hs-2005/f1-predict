@@ -13,7 +13,9 @@ export function Footer() {
         </div>
         <nav className="flex flex-wrap content-start gap-x-6 gap-y-3 text-sm" aria-label="Footer navigation">
           <Link to="/" className="hover:text-white">Home</Link>
+          <Link to="/how-it-works" className="hover:text-white">How it works</Link>
           <Link to="/standings" className="hover:text-white">Standings</Link>
+          <Link to="/results" className="hover:text-white">Race analysis</Link>
           <Link to="/leaderboard" className="hover:text-white">Leaderboard</Link>
         </nav>
         <div className="text-xs leading-6 lg:text-right">F1 Predictor Pro is an independent fan project and is not affiliated with Formula 1 or its companies.</div>
