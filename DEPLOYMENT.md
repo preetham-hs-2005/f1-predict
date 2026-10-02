@@ -29,7 +29,7 @@ The API sends password-reset mail directly. Registration creates a welcome-mail 
 
 ## 3. One-minute mail and reminder runner on Render
 
-Create **one** Render Cron Job from this repository, branch `main`. A cron job is separate from the web service and runs even when the web service is asleep.
+Create **one** Render Cron Job from this repository, branch `prod` (the same branch as the production web service). A cron job is separate from the web service and runs even when the web service is asleep.
 
 - Root directory: `server`
 - Build command: `npm ci --include=dev && npm run build`
