@@ -57,7 +57,7 @@ export function dueQualifyingSessions(race: Race, now: Date) {
   return ([
     { type: "race", label: "Grand Prix qualifying", start: validDate(race.qualifyingStartTime) },
     ...(race.sprintWeekend ? [{ type: "sprint", label: "Sprint qualifying", start: validDate(race.sprintQualifyingStartTime) }] : []),
-  ]).filter((session) => session.start && now >= new Date(session.start.getTime() - 60 * 60_000) && now < new Date(session.start.getTime() - 58 * 60_000));
+  ]).filter((session) => session.start && now >= new Date(session.start.getTime() - 60 * 60_000) && now < new Date(session.start.getTime() - 45 * 60_000));
 }
 
 export async function queueDueReminders(now = new Date()): Promise<void> {

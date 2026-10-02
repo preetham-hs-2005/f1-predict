@@ -1,0 +1,31 @@
+name: Race reminders
+
+on:
+  schedule:
+    - cron: '2/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: race-reminders
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Queue and send due reminders
+        env:
+          REMINDER_JOB_SECRET: ${{ secrets.REMINDER_JOB_SECRET }}
+        run: |
+          if [ -z "$REMINDER_JOB_SECRET" ]; then
+            echo "REMINDER_JOB_SECRET is not configured" >&2
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 240 \
+            --request POST \
+            --header "Authorization: Bearer $REMINDER_JOB_SECRET" \
+            https://f1-predictor-pro.onrender.com/api/internal/reminders/run

@@ -42,6 +42,7 @@ import driversRoutes from "./routes/drivers.js";
 import openF1Routes from "./routes/openf1.js";
 import formula1Routes from "./routes/formula1.js";
 import notificationRoutes from "./routes/notifications.js";
+import reminderRunnerRoutes from "./routes/reminderRunner.js";
 import { Driver } from "./models/Driver.js";
 import { User } from "./models/User.js";
 import { appUrl } from "./utils/appUrl.js";
@@ -192,6 +193,7 @@ app.use("/api/drivers", driversRoutes);
 app.use("/api/openf1", openF1Routes);
 app.use("/api/formula1", formula1Routes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/internal/reminders", reminderRunnerRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

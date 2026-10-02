@@ -22,31 +22,30 @@ Keep the current `MONGODB_URI` and `JWT_SECRET` values. Changing `JWT_SECRET` si
 | `SMTP_USER` | `resend` |
 | `SMTP_PASS` | Your Resend sending API key (`re_...`); store in Render, never Git |
 | `SMTP_FROM` | `F1 Predictor Pro <noreply@f1predict.dev>` |
+| `REMINDER_JOB_SECRET` | A unique random value of at least 32 characters, shared only with GitHub Actions |
 
 If the service root directory is `server`, use build command `npm ci --include=dev && npm run build` and start command `node dist/server.js`. If its root directory is the repository root, use `cd server && npm ci --include=dev && npm run build` and `cd server && node dist/server.js`. Set the HTTP health-check path to `/health`. Keep any existing `PORT` setting; Render supplies one automatically if omitted.
 
 The API sends password-reset mail directly. Registration creates a welcome-mail job in MongoDB, so the job runner below is required to deliver it.
 
-## 3. One-minute mail and reminder runner on Render
+## 3. Free mail and reminder runner with GitHub Actions
 
-Create **one** Render Cron Job from this repository, branch `prod` (the same branch as the production web service). A cron job is separate from the web service and runs even when the web service is asleep.
+This repository is public, so standard GitHub-hosted Actions runners are free. The workflow in `.github/workflows/race-reminders.yml` runs every five minutes on the default `main` branch and can also be started manually. It calls the Render API's protected reminder endpoint, which queues due notices and sends pending mail. The existing Render web service wakes if asleep; the workflow allows four minutes for this request.
 
-- Root directory: `server`
-- Build command: `npm ci --include=dev && npm run build`
-- Schedule: `* * * * *` (every minute; Render interprets cron schedules in UTC)
-- Command: `npm run worker:once`
-- Environment variables: the same `MONGODB_URI`, `NODE_ENV`, `APP_URL`, and five `SMTP_*` values as the API. A Render environment group can share these between the two services. Do **not** create a second cron job or run a continuous worker alongside it.
+- Generate a unique random `REMINDER_JOB_SECRET` of at least 32 characters. Add it to the **Render web service** Environment and to this GitHub repository's **Actions repository secrets** with exactly the same name and value. Never add it to Git, Vercel, or browser code.
+- In GitHub Actions, enable the `Race reminders` workflow and use **Run workflow** once to verify its response is `{"success":true}`. The workflow uses a `2/5 * * * *` UTC schedule. Leave the Render web service's health-check path at `/health`.
+- Do not create a second scheduled runner for the same job.
 
-Each run queues due race notices, sends queued mail, and exits. MongoDB keys prevent duplicate notices. The Monday race-week email is scheduled at 09:00 India time. The qualifying emails and in-app notices are queued in the first two minutes of the one-hour-before-session window. A delayed or failed run outside that window skips the time-sensitive alert. Cancelled and completed races, sessions already started, and race times without a time zone are skipped. Make sure the race calendar is accurate before enabling the cron job.
+MongoDB keys prevent duplicate notices. The Monday race-week email is scheduled at 09:00 India time. Qualifying emails and in-app notices are queued from one hour until 45 minutes before the session to tolerate startup and schedule delays. A delayed or failed run outside that window skips the time-sensitive alert. Cancelled and completed races, sessions already started, and race times without a time zone are skipped. Make sure the race calendar is accurate before enabling the workflow.
 
-Render does not provide Free instances for cron jobs or background workers. Its [cron pricing](https://render.com/docs/cronjobs) currently has a $1/month minimum per job plus runtime charges. An always-on Background Worker is an alternative: use root `server`, the same build command and environment variables, and start command `npm run start:worker`; it costs more because it runs continuously. Choose **one** runner.
+GitHub scheduled runs can be delayed or dropped during high load, and public-repository schedules are disabled after 60 days without repository activity. This free setup cannot guarantee exact one-hour timing; check Actions run history before race weekends. Render Cron Jobs or an always-on worker provide more predictable timing but require a paid plan.
 
 ## 4. Verify after deployment
 
 1. Open `https://f1-predictor-pro.onrender.com/health` and confirm a success response.
 2. Open `https://f1predict.dev` and confirm the frontend loads races and auth without CORS errors.
 3. Request a password reset for an account you control. The email should come from `noreply@f1predict.dev` and link to `https://f1predict.dev/reset-password?...`.
-4. Register a new test account, run the cron job manually once in Render, and check the welcome email. Existing accounts do not get a welcome email retroactively.
-5. Check the Render Cron Job's run logs and the MongoDB `mailJobs` collection for `sent` or retrying `pending` jobs. Review the race calendar before the next scheduled race reminder.
+4. Register a new test account, manually run `Race reminders` in GitHub Actions, and check the welcome email. Existing accounts do not get a welcome email retroactively.
+5. Check the workflow run logs and the MongoDB `mailJobs` collection for `sent` or retrying `pending` jobs. Review the race calendar before the next scheduled race reminder.
 
-Never put the Resend key, MongoDB URI, or JWT secret in the repository or Vercel frontend environment variables. Only the Render API and runner need them.
+Never put the Resend key, MongoDB URI, or JWT secret in the repository, GitHub Actions, or Vercel frontend environment variables. Only the Render API needs them; GitHub Actions holds the narrow reminder-job token.

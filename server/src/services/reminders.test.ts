@@ -22,6 +22,8 @@ test("Monday send time is 9 AM India time for the race week", () => {
 test("sprint and Grand Prix qualifying each have a separate one-hour alert", () => {
   assert.deepEqual(dueQualifyingSessions(race, new Date("2026-10-09T12:00:00Z")).map((item) => item.type), ["sprint"]);
   assert.deepEqual(dueQualifyingSessions(race, new Date("2026-10-10T12:00:00Z")).map((item) => item.type), ["race"]);
+  assert.deepEqual(dueQualifyingSessions(race, new Date("2026-10-10T12:14:00Z")).map((item) => item.type), ["race"]);
+  assert.deepEqual(dueQualifyingSessions(race, new Date("2026-10-10T12:15:00Z")), []);
   assert.deepEqual(dueQualifyingSessions(race, new Date("2026-10-10T13:00:00Z")), []);
 });
 
