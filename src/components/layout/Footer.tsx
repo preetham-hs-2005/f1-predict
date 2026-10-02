@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { BrandMark } from "./BrandMark";
 
 export function Footer() {
-  return <footer className="relative z-10 mt-auto bg-black px-5 pb-8 pt-6 text-[#929292] sm:px-8" aria-label="Site footer">
+  return <footer className="relative z-10 mt-auto bg-background px-5 pb-8 pt-6 text-[#929292] sm:px-8" aria-label="Site footer">
     <div className="mx-auto max-w-[1400px] border-t border-white/25 pt-9">
       <div className="grid gap-10 md:grid-cols-[1.2fr_1fr] lg:grid-cols-[1.2fr_1fr_1fr]">
         <div>
