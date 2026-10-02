@@ -1,5 +1,16 @@
 # F1 Prediction League
 
+## Email and prediction reminders
+
+The API and notification runner are separate processes. Configure `server/.env` using `server/.env.example` (use real SMTP credentials, a verified sender address, a strong JWT secret, MongoDB, and the public `APP_URL`). From `server/`, run `npm run dev` for the API and `npm run worker` in a second terminal. In production, run `npm run worker:once` each minute in a Render Cron Job, or run one always-on background worker. See [DEPLOYMENT.md](DEPLOYMENT.md) for the current Vercel and Render settings. The runner retries queued welcome and race emails with backoff. Password reset mail is sent directly so the raw reset link is never stored in the mail queue.
+
+Set `SMTP_FROM="F1 Predictor Pro <noreply@f1predict.dev>"` in both the local backend environment and the deployed API and worker. The domain must be verified for sending by the SMTP provider; the domain registrar's email-forwarding rule only handles incoming mail.
+
+To review the email designs with a registered account, run `npm run preview:emails -- user@example.com` from `server/`. This sends four clearly labelled preview messages (welcome, race week, Grand Prix qualifying, sprint qualifying) and one real password-reset email. The reset link expires after 30 minutes and replaces any earlier reset link. Use this only for an address you control.
+Add `--skip-reset` to send just the four preview messages without replacing an existing reset link.
+
+The Monday race-week email is scheduled for 9:00 AM Asia/Kolkata. Grand Prix and sprint qualifying reminders are queued during the first two minutes of their one-hour window; a worker that is down for that window will skip those alerts rather than send a misleading late reminder. In-app alerts are stored until read and are visible from the navigation bell. Configure `VITE_API_URL` in the frontend to point to the deployed API. No email can be delivered until SMTP is configured.
+
 A full-stack web application for Formula 1 enthusiasts to make race predictions, track predictions against actual results, and compete on a live leaderboard.
 
 ## 📋 Table of Contents

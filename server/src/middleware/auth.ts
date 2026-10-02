@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { extractToken, verifyToken, JwtPayload } from "../utils/jwt.js";
+import { User } from "../models/User.js";
 
 declare global {
   namespace Express {
@@ -9,7 +10,7 @@ declare global {
   }
 }
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
     const token = extractToken(req.headers.authorization);
 
@@ -22,7 +23,12 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
       return res.status(401).json({ success: false, error: "Invalid or expired token" });
     }
 
-    req.user = payload;
+    const user = await User.findById(payload.userId);
+    if (!user || (user.tokenVersion || 0) !== (payload.tokenVersion || 0)) {
+      return res.status(401).json({ success: false, error: "Session expired. Please sign in again." });
+    }
+
+    req.user = { ...payload, role: user.role };
     next();
   } catch (error) {
     res.status(401).json({ success: false, error: "Authentication failed" });

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { BrandMark } from "@/components/layout/BrandMark";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { cn } from "@/lib/utils";
 import { getUpcomingRacesFromServer, type ServerRace } from "@/lib/api/races";
 import { getPredictionLockTime, type RaceWeekend } from "@/lib/data/raceCalendar";
@@ -229,6 +230,7 @@ const Navbar = () => {
         </div>
 
         <div className="mt-auto space-y-3 p-3">
+          {user && <div className="flex items-center justify-between px-2"><span className="label-eyebrow">Alerts</span><NotificationBell /></div>}
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger className="w-full rounded-sm border border-border bg-surface-1 p-2 text-left transition-colors hover:border-signal focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
@@ -274,6 +276,7 @@ const Navbar = () => {
       <header className="fixed left-0 right-0 top-[62px] z-50 border-b border-border bg-sidebar/95 px-3 py-3 backdrop-blur lg:hidden">
         <div className="flex items-center gap-3">
           <BrandMark to="/dashboard" compact />
+          {user && <NotificationBell />}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="cockpit" size="icon" className="ml-auto">

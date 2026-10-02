@@ -11,6 +11,9 @@ export interface UserDocument {
   role: "user" | "admin";
   totalPoints: number;
   hidden?: boolean;
+  tokenVersion?: number;
+  resetTokenHash?: string;
+  resetTokenExpiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +41,7 @@ export class User {
       role: "user",
       totalPoints: 0,
       hidden: false,
+      tokenVersion: 0,
       createdAt: now,
       updatedAt: now,
     });
@@ -119,6 +123,25 @@ export class User {
 
   static async verifyPassword(user: UserDocument, password: string): Promise<boolean> {
     return comparePassword(password, user.password);
+  }
+
+  static async setResetToken(id: ObjectId, hash: string, expiresAt: Date): Promise<void> {
+    await getDB().collection<UserDocument>("users").updateOne(
+      { _id: id },
+      { $set: { resetTokenHash: hash, resetTokenExpiresAt: expiresAt, updatedAt: new Date() } },
+    );
+  }
+
+  static async resetPassword(hash: string, password: string): Promise<boolean> {
+    const result = await getDB().collection<UserDocument>("users").updateOne(
+      { resetTokenHash: hash, resetTokenExpiresAt: { $gt: new Date() } },
+      {
+        $set: { password: await hashPassword(password), updatedAt: new Date() },
+        $unset: { resetTokenHash: "", resetTokenExpiresAt: "" },
+        $inc: { tokenVersion: 1 },
+      },
+    );
+    return result.modifiedCount === 1;
   }
 
   static formatResponse(user: UserDocument) {

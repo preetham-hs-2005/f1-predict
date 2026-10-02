@@ -20,7 +20,8 @@ import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
 import RaceCard from "@/components/dashboard/RaceCard";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { getUpcomingRacesFromServer, type ServerRace } from "@/lib/api/races";
+import { type ServerRace } from "@/lib/api/races";
+import { apiClient } from "@/lib/api/client";
 import type { RaceWeekend } from "@/lib/data/raceCalendar";
 
 const STEPS = [
@@ -55,7 +56,7 @@ const FEATURES = [
 ];
 
 const STATS = [
-  { value: "22", label: "Race Rounds", icon: Flag },
+  { value: "—", label: "Race Rounds", icon: Flag },
   { value: "20", label: "Drivers", icon: Users2 },
   { value: "∞", label: "Predictions", icon: Zap },
   { value: "Live", label: "Standings", icon: BarChart3 },
@@ -85,6 +86,8 @@ const Index = () => {
   const heroRef = useRef<HTMLDivElement>(null);
   const [nextRace, setNextRace] = useState<RaceWeekend | null>(null);
   const [isRaceLoading, setIsRaceLoading] = useState(true);
+  const [raceError, setRaceError] = useState(false);
+  const [raceCount, setRaceCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) navigate("/dashboard");
@@ -93,10 +96,15 @@ const Index = () => {
   useEffect(() => {
     let active = true;
 
-    getUpcomingRacesFromServer()
-      .then((races) => {
-        if (active && races[0]) setNextRace(toRaceWeekend(races[0]));
+    apiClient.get<{ data: ServerRace[] }>("/api/admin/races")
+      .then((response) => {
+        if (!active) return;
+        const races = response.data || [];
+        setRaceCount(races.filter((race) => !race.cancelled).length);
+        const upcoming = races.filter((race) => !race.cancelled && new Date(race.raceStartTime) > new Date()).sort((a, b) => new Date(a.raceStartTime).getTime() - new Date(b.raceStartTime).getTime());
+        setNextRace(upcoming[0] ? toRaceWeekend(upcoming[0]) : null);
       })
+      .catch(() => { if (active) setRaceError(true); })
       .finally(() => {
         if (active) setIsRaceLoading(false);
       });
@@ -279,7 +287,7 @@ const Index = () => {
                 className="flex flex-col items-center gap-1 bg-surface-1 px-6 py-4 text-center transition-colors hover:bg-surface-2"
               >
                 <Icon className="mb-1 h-4 w-4 text-signal" />
-                <span className="display text-2xl font-black text-white">{value}</span>
+                <span className="display text-2xl font-black text-white">{label === "Race Rounds" ? raceCount ?? "—" : value}</span>
                 <span className="data-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                   {label}
                 </span>
@@ -304,6 +312,12 @@ const Index = () => {
             </div>
             {isRaceLoading ? (
               <div className="panel panel-corners min-h-[350px] animate-pulse bg-surface-2/50" aria-label="Loading next race" />
+            ) : raceError ? (
+              <div className="panel panel-corners flex min-h-[350px] flex-col items-center justify-center p-8 text-center" role="alert">
+                <Flag className="h-8 w-8 text-signal" />
+                <h3 className="display mt-4 text-xl font-bold text-white">Calendar unavailable</h3>
+                <p className="data-mono mt-2 max-w-sm text-xs uppercase leading-6 text-muted-foreground">We could not load the race calendar. Please try again later.</p>
+              </div>
             ) : nextRace ? (
               <RaceCard race={nextRace} featured />
             ) : (
@@ -435,15 +449,6 @@ const Index = () => {
           </div>
         </section>
 
-        {/* ── FOOTER ── */}
-        <footer className="border-t border-border">
-          <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-5 sm:px-8">
-            <BrandMark compact />
-            <p className="data-mono text-[10px] uppercase text-muted-foreground">
-              © 2026 F1 Predictor Pro
-            </p>
-          </div>
-        </footer>
       </main>
     </PageShell>
   );

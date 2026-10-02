@@ -6,6 +6,7 @@ export interface JwtPayload {
   name: string;
   username?: string;
   role: "user" | "admin";
+  tokenVersion?: number;
 }
 
 export function generateToken(payload: JwtPayload): string {

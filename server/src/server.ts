@@ -41,7 +41,10 @@ import discussionsRoutes from "./routes/discussions.js";
 import driversRoutes from "./routes/drivers.js";
 import openF1Routes from "./routes/openf1.js";
 import formula1Routes from "./routes/formula1.js";
+import notificationRoutes from "./routes/notifications.js";
 import { Driver } from "./models/Driver.js";
+import { User } from "./models/User.js";
+import { appUrl } from "./utils/appUrl.js";
 import { verifyToken } from "./utils/jwt.js";
 
 const app = express();
@@ -53,6 +56,7 @@ const PORT = process.env.PORT || 3000;
 interface ClientInfo {
   userId: string;
   discussionId: string;
+  token: string;
 }
 
 const clients = new Map<any, ClientInfo>();
@@ -60,7 +64,7 @@ const clients = new Map<any, ClientInfo>();
 wss.on("connection", (ws) => {
   console.log("New WebSocket connection");
 
-  ws.on("message", (data: string) => {
+  ws.on("message", async (data: string) => {
     try {
       const message = JSON.parse(data);
       
@@ -74,8 +78,13 @@ wss.on("connection", (ws) => {
           ws.close(4001, "Unauthorized");
           return;
         }
+        const currentUser = await User.findById(payload.userId);
+        if (!currentUser || (currentUser.tokenVersion || 0) !== (payload.tokenVersion || 0)) {
+          ws.close(4001, "Session expired");
+          return;
+        }
         // User joins a discussion room
-        clients.set(ws, { userId: payload.userId, discussionId: message.discussionId });
+        clients.set(ws, { userId: payload.userId, discussionId: message.discussionId, token: message.token });
         
         // Notify others in the same discussion
         broadcastToDiscussion(message.discussionId, {
@@ -88,6 +97,11 @@ wss.on("connection", (ws) => {
         if (!clientInfo) {
           ws.close(4001, "Unauthorized");
           return;
+        }
+        const payload = verifyToken(clientInfo.token);
+        const currentUser = payload && await User.findById(payload.userId);
+        if (!payload || !currentUser || (currentUser.tokenVersion || 0) !== (payload.tokenVersion || 0)) {
+          ws.close(4001, "Session expired"); return;
         }
         // Broadcast message to all clients in the same discussion
         broadcastToDiscussion(clientInfo.discussionId, {
@@ -104,6 +118,11 @@ wss.on("connection", (ws) => {
         if (!clientInfo) {
           ws.close(4001, "Unauthorized");
           return;
+        }
+        const payload = verifyToken(clientInfo.token);
+        const currentUser = payload && await User.findById(payload.userId);
+        if (!payload || !currentUser || (currentUser.tokenVersion || 0) !== (payload.tokenVersion || 0)) {
+          ws.close(4001, "Session expired"); return;
         }
         // Broadcast poll update to all clients in the same discussion
         broadcastToDiscussion(clientInfo.discussionId, {
@@ -172,6 +191,7 @@ app.use("/api/discussions", discussionsRoutes);
 app.use("/api/drivers", driversRoutes);
 app.use("/api/openf1", openF1Routes);
 app.use("/api/formula1", formula1Routes);
+app.use("/api/notifications", notificationRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -191,6 +211,7 @@ app.use((req, res) => {
 // Start server
 async function startServer() {
   try {
+    appUrl();
     // Connect to MongoDB
     await connectDB();
 

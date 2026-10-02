@@ -22,6 +22,11 @@ export async function connectDB(): Promise<Db> {
   // Create indexes
   await db.collection("users").createIndex({ email: 1 }, { unique: true });
   await db.collection("users").createIndex({ username: 1 }, { unique: true, sparse: true });
+  await db.collection("users").createIndex({ resetTokenHash: 1 }, { unique: true, sparse: true });
+  await db.collection("mailJobs").createIndex({ key: 1 }, { unique: true });
+  await db.collection("mailJobs").createIndex({ status: 1, nextAttemptAt: 1 });
+  await db.collection("notifications").createIndex({ key: 1 }, { unique: true });
+  await db.collection("notifications").createIndex({ userId: 1, createdAt: -1 });
   await db.collection("predictions").createIndex({ userId: 1, raceWeekendId: 1, type: 1 });
   await db.collection("messages").createIndex({ discussionId: 1, createdAt: 1 });
   await db.collection("scores").createIndex({ userId: 1 });
