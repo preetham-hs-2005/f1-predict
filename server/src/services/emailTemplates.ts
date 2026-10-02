@@ -90,6 +90,14 @@ export function resetEmail(name: string, resetUrl: string): EmailContent {
   return layout({ eyebrow: "Account security", title: "Reset your password.", greeting: `Hi ${name},`, paragraphs: ["We received a request to reset your F1 Predictor Pro password."], button: "Reset password", url: resetUrl, details: [{ label: "Link expires", value: "In 30 minutes" }, { label: "Link use", value: "One time only" }], note: "If you didn't request this, you can ignore this email. Your password has not changed." });
 }
 
+export function emailVerificationEmail(name: string, code: string, dashboardUrl: string): EmailContent {
+  return layout({ eyebrow: "Account verification", title: "Confirm your email.", greeting: `Hi ${name},`, paragraphs: ["Enter this six-digit code in the verification window on your dashboard. Never share it with anyone."], button: "Open dashboard", url: dashboardUrl, details: [{ label: "Your code", value: code }, { label: "Expires", value: "In 10 minutes" }], note: "If you didn't create this account or request a code, you can ignore this email." });
+}
+
+export function emailVerifiedEmail(name: string, dashboardUrl: string): EmailContent {
+  return layout({ eyebrow: "Account verified", title: "You're cleared to predict.", greeting: `Hi ${name},`, paragraphs: ["Your email is verified. You can now submit, update, and manage your race predictions."], button: "Open dashboard", url: dashboardUrl });
+}
+
 export function raceWeekEmail(name: string, raceName: string, circuitName: string, sessions: { label: string; value: string }[], dashboardUrl: string): EmailContent {
   return layout({ eyebrow: "Race week", title: `${raceName} is coming up.`, greeting: `Hi ${name},`, paragraphs: [`It's race week at ${circuitName}. Here's the schedule so you can plan your predictions.`], button: "Make predictions", url: dashboardUrl, details: sessions, note: "All session times shown in India time (IST)." });
 }

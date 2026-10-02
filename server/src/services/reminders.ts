@@ -71,7 +71,7 @@ export async function queueDueReminders(now = new Date()): Promise<void> {
     const sessions = dueQualifyingSessions(race, now);
     if (!mondayDue && sessions.length === 0) continue;
 
-    for await (const user of db.collection<UserDocument>("users").find({}, { projection: { _id: 1, email: 1, name: 1 } })) {
+    for await (const user of db.collection<UserDocument>("users").find({ emailVerifiedAt: { $type: "date" } }, { projection: { _id: 1, email: 1, name: 1 } })) {
       if (!user._id || !user.email) continue;
       const id = user._id.toString();
       if (mondayDue) {

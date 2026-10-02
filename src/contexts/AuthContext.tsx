@@ -7,6 +7,7 @@ export interface User {
   name: string;
   username?: string;
   email: string;
+  emailVerified: boolean;
   role: "user" | "admin";
   totalPoints: number;
 }
@@ -24,6 +25,9 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, username: string) => Promise<{ success: boolean; error?: string }>;
   setUsername: (username: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (name: string) => Promise<{ success: boolean; error?: string }>;
+  sendVerificationCode: () => Promise<void>;
+  verifyEmailCode: (code: string) => Promise<void>;
+  correctEmail: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -158,8 +162,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const saveUser = (updated: User) => {
+    setUser(updated);
+    const session = localStorage.getItem(SESSION_KEY);
+    if (session) {
+      const sessionData: SessionData = JSON.parse(session);
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ ...sessionData, user: updated }));
+    }
+  };
+
+  const sendVerificationCode = () => authApi.sendVerificationCode();
+  const verifyEmailCode = async (code: string) => saveUser(await authApi.verifyEmailCode(code));
+  const correctEmail = async (email: string, password: string) => {
+    const result = await authApi.correctEmail(email, password);
+    saveUser(result.user);
+    return result.verificationEmailSent;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout, setUsername, updateProfile }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout, setUsername, updateProfile, sendVerificationCode, verifyEmailCode, correctEmail }}>
       {children}
     </AuthContext.Provider>
   );

@@ -10,7 +10,7 @@
     "worker:once": "node dist/worker.js --once",
     "preview:emails": "node --import tsx src/scripts/sendEmailPreviews.ts",
     "build": "tsc",
-    "test": "npm run build && node --test dist/services/reminders.test.js dist/services/emailTemplates.test.js dist/middleware/auth.test.js dist/utils/appUrl.test.js dist/routes/reminderRunner.test.js",
+    "test": "npm run build && node --test dist/services/reminders.test.js dist/services/emailTemplates.test.js dist/services/emailVerification.test.js dist/middleware/auth.test.js dist/utils/appUrl.test.js dist/routes/reminderRunner.test.js",
     "start": "npm run build && node dist/server.js",
     "start:worker": "node dist/worker.js"
   },

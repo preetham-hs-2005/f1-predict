@@ -9,6 +9,7 @@ export interface AuthUser {
   name: string;
   username?: string;
   email: string;
+  emailVerified: boolean;
   role: "user" | "admin";
   totalPoints: number;
 }
@@ -146,4 +147,21 @@ export async function setUsername(username: string): Promise<AuthUser> {
   }
 
   return response.user;
+}
+
+export async function sendVerificationCode(): Promise<void> {
+  await apiClient.post("/api/auth/email-verification/send", {});
+}
+
+export async function verifyEmailCode(code: string): Promise<AuthUser> {
+  const response = await apiClient.post<AuthResponse>("/api/auth/email-verification/verify", { code });
+  if (!response.success || !response.user) throw new Error(response.error || "Verification failed");
+  return response.user;
+}
+
+export async function correctEmail(email: string, password: string): Promise<{ user: AuthUser; verificationEmailSent: boolean }> {
+  const response = await apiClient.put<AuthResponse & { verificationEmailSent?: boolean }>("/api/auth/email-verification/email", { email, password });
+  if (!response.success || !response.user || !response.token) throw new Error(response.error || "Could not update email");
+  apiClient.setAuthToken(response.token, response.user);
+  return { user: response.user, verificationEmailSent: Boolean(response.verificationEmailSent) };
 }

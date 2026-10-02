@@ -8,13 +8,14 @@ import { PageShell } from "@/components/layout/PageShell";
 import CountdownTimer from "@/components/dashboard/CountdownTimer";
 import PredictionForm from "@/components/prediction/PredictionForm";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRaceByIdFromServer } from "@/lib/api/races";
 import { getPredictionLockSource, isPredictionLocked, type RaceWeekend } from "@/lib/data/raceCalendar";
 
 const Predict = () => {
   const { raceId, type = "race" } = useParams<{ raceId: string; type: string }>();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [race, setRace] = useState<RaceWeekend | null>(null);
   const [raceLoading, setRaceLoading] = useState(true);
@@ -167,7 +168,12 @@ const Predict = () => {
             )}
           </div>
 
-          {race.cancelled ? (
+          {!user?.emailVerified ? (
+            <div className="rounded-sm border border-signal/30 bg-signal/10 p-6 text-center">
+              <p className="mb-4 font-medium text-white">Verify your email to make predictions.</p>
+              <Button onClick={() => navigate("/dashboard")}>Open verification</Button>
+            </div>
+          ) : race.cancelled ? (
             <div className="rounded-sm border border-destructive/20 bg-destructive/10 p-6 text-center">
               <p className="font-medium text-destructive">This race has been cancelled. Predictions are not available.</p>
             </div>

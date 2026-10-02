@@ -12,6 +12,13 @@ export interface UserDocument {
   totalPoints: number;
   hidden?: boolean;
   tokenVersion?: number;
+  emailVerifiedAt?: Date;
+  verificationCodeHash?: string;
+  verificationExpiresAt?: Date;
+  verificationAttempts?: number;
+  verificationLastSentAt?: Date;
+  verificationWindowStart?: Date;
+  verificationSentCount?: number;
   resetTokenHash?: string;
   resetTokenExpiresAt?: Date;
   createdAt: Date;
@@ -150,6 +157,7 @@ export class User {
       name: user.name,
       username: user.username,
       email: user.email,
+      emailVerified: Boolean(user.emailVerifiedAt),
       role: user.role,
       totalPoints: user.totalPoints,
     };

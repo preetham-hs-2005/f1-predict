@@ -41,3 +41,11 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+export async function requireVerifiedEmail(req: Request, res: Response, next: NextFunction) {
+  const user = req.user && await User.findById(req.user.userId);
+  if (!user?.emailVerifiedAt) {
+    return res.status(403).json({ success: false, error: "Verify your email before making predictions." });
+  }
+  next();
+}

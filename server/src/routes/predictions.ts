@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import { Prediction } from "../models/Prediction.js";
-import { authMiddleware } from "../middleware/auth.js";
+import { authMiddleware, requireVerifiedEmail } from "../middleware/auth.js";
 import { getDB } from "../utils/db.js";
 import {
   assertPredictionWindowOpen,
@@ -21,7 +21,7 @@ function getStatusCode(error: unknown) {
 }
 
 // POST /api/predictions/submit
-router.post("/submit", authMiddleware, async (req: Request, res: Response) => {
+router.post("/submit", authMiddleware, requireVerifiedEmail, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: "Not authenticated" });
@@ -230,7 +230,7 @@ router.get("/:raceWeekendId", authMiddleware, async (req: Request, res: Response
 });
 
 // PUT /api/predictions/:raceWeekendId
-router.put("/:raceWeekendId", authMiddleware, async (req: Request, res: Response) => {
+router.put("/:raceWeekendId", authMiddleware, requireVerifiedEmail, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: "Not authenticated" });
@@ -292,7 +292,7 @@ router.put("/:raceWeekendId", authMiddleware, async (req: Request, res: Response
 });
 
 // DELETE /api/predictions/:raceWeekendId
-router.delete("/:raceWeekendId", authMiddleware, async (req: Request, res: Response) => {
+router.delete("/:raceWeekendId", authMiddleware, requireVerifiedEmail, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: "Not authenticated" });

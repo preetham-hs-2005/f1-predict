@@ -18,7 +18,7 @@ export function SetUsernameModal() {
   const [loading, setLoading] = useState(false);
   
   // Show modal if authenticated but no username
-  const isOpen = isAuthenticated && user && !user.username;
+  const isOpen = isAuthenticated && user?.emailVerified && !user.username;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
