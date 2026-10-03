@@ -30,6 +30,8 @@ export async function connectDB(): Promise<Db> {
   await db.collection("predictions").createIndex({ userId: 1, raceWeekendId: 1, type: 1 });
   await db.collection("messages").createIndex({ discussionId: 1, createdAt: 1 });
   await db.collection("scores").createIndex({ userId: 1 });
+  await db.collection("scores").createIndex({ userId: 1, raceId: 1, type: 1 }, { unique: true });
+  await db.collection("results").createIndex({ raceId: 1, type: 1 }, { unique: true });
   await db.collection("races").createIndex({ raceId: 1 });
   await db.collection("pollVotes").createIndex({ pollId: 1, userId: 1 }, { unique: true });
 

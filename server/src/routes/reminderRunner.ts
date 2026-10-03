@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { Router } from "express";
 import { queueDueReminders } from "../services/reminders.js";
 import { sendQueuedEmails } from "../services/mail.js";
+import { syncDueResults } from "../services/resultSync.js";
 
 const router = Router();
 let running = false;
@@ -23,8 +24,15 @@ router.post("/run", async (req, res) => {
   if (running) return res.status(409).json({ success: false, error: "Reminder run already in progress" });
   running = true;
   try {
-    await queueDueReminders();
-    await sendQueuedEmails();
+    const [mail, results] = await Promise.allSettled([
+      (async () => { await queueDueReminders(); await sendQueuedEmails(); })(),
+      syncDueResults(),
+    ]);
+    if (mail.status === "rejected") console.error("Reminder run failed:", mail.reason);
+    if (results.status === "rejected") console.error("Result sync failed:", results.reason);
+    if (mail.status === "rejected" || results.status === "rejected") {
+      return res.status(500).json({ success: false, error: "Runner task failed" });
+    }
     return res.json({ success: true });
   } catch (error) {
     console.error("Reminder run failed:", error);

@@ -4,6 +4,7 @@ import { connectDB, closeDB } from "./utils/db.js";
 import { queueDueReminders } from "./services/reminders.js";
 import { sendQueuedEmails } from "./services/mail.js";
 import { appUrl } from "./utils/appUrl.js";
+import { syncDueResults } from "./services/resultSync.js";
 
 dotenv.config();
 const configuredDns = process.env.DNS_SERVERS?.split(",").map((server) => server.trim()).filter(Boolean);
@@ -17,10 +18,17 @@ async function run() {
     if (running) return;
     running = true;
     try {
-      await queueDueReminders();
-      await sendQueuedEmails();
-    } catch (error) {
-      console.error("Notification worker tick failed:", error);
+      try {
+        await queueDueReminders();
+        await sendQueuedEmails();
+      } catch (error) {
+        console.error("Notification worker tick failed:", error);
+      }
+      try {
+        await syncDueResults();
+      } catch (error) {
+        console.error("Result worker tick failed:", error);
+      }
     } finally {
       running = false;
     }

@@ -35,6 +35,8 @@ This repository is public, so standard GitHub-hosted Actions runners are free. T
 
 MongoDB keys prevent duplicate notices. The Monday race-week email is scheduled at 09:00 India time. Qualifying emails and in-app notices are queued during the full hour before the session. A delayed or failed run after the session starts skips the time-sensitive alert. Cancelled and completed races, sessions already started, and race times without a time zone are skipped. Admin race times are entered in India time and saved with an explicit UTC offset. Make sure the race calendar is accurate before enabling the workflow.
 
+The same protected runner checks Jolpica for qualifying, sprint, and race results. It scores pole picks after qualifying and the remaining picks after a complete race or sprint classification, then checks again for corrections. The admin Results page shows sync status and supports manual overrides. Nonstandard or unmatched calendar entries stay manual. Jolpica is a community feed; automatic results depend on its availability and the existing GitHub Actions schedule, which can be delayed. No new paid service or credential is required.
+
 GitHub scheduled runs can be delayed or dropped during high load, and public-repository schedules are disabled after 60 days without repository activity. This free setup cannot guarantee exact one-hour timing; check Actions run history before race weekends. Render Cron Jobs or an always-on worker provide more predictable timing but require a paid plan.
 
 ## 4. Verify after deployment

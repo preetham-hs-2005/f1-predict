@@ -17,6 +17,7 @@ import {
 } from "../services/openf1Service.js";
 import { calculatePredictionScore } from "../utils/scoring.js";
 import { absoluteSessionDate } from "../utils/raceTime.js";
+import { scoreStoredResult } from "../services/resultScoring.js";
 
 const router = Router();
 let lastRaceEnrichmentRateLimitLogAt = 0;
@@ -429,6 +430,11 @@ router.get("/results", async (req: Request, res: Response) => {
       p2: r.p2,
       p3: r.p3,
       pole: r.pole,
+      bestConstructor: r.bestConstructor,
+      source: r.source || "manual",
+      status: r.status || (r.p1 && r.p2 && r.p3 && r.pole && r.bestConstructor ? "complete" : "partial"),
+      manualOverride: r.manualOverride ?? true,
+      syncedAt: r.syncedAt,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
     }));
@@ -449,7 +455,7 @@ router.post("/results", async (req: Request, res: Response) => {
   try {
     const { raceId, type, p1, p2, p3, pole, bestConstructor } = req.body;
 
-    if (!raceId || !type) {
+    if (!raceId || !["race", "sprint"].includes(type)) {
       return res.status(400).json({ success: false, error: "Missing raceId or type" });
     }
     
@@ -459,10 +465,7 @@ router.post("/results", async (req: Request, res: Response) => {
 
     const db = getDB();
     const resultsCollection = db.collection("results");
-    const predictionsCollection = db.collection("predictions");
-    const scoresCollection = db.collection("scores");
     const race = await getRaceForPrediction(raceId);
-    const predictionType = normalizePredictionType(type);
 
     if (!race) {
       return res.status(404).json({ success: false, error: "Race weekend not found" });
@@ -480,6 +483,10 @@ router.post("/results", async (req: Request, res: Response) => {
           p3,
           pole,
           bestConstructor,
+          source: "manual",
+          manualOverride: true,
+          status: p1 && p2 && p3 && pole && bestConstructor ? "complete" : "partial",
+          sourceDigest: null,
           updatedAt: new Date(),
         },
         $setOnInsert: {
@@ -489,93 +496,8 @@ router.post("/results", async (req: Request, res: Response) => {
       { upsert: true, returnDocument: "after" }
     );
 
-    // Calculate scores for all predictions for this race
-    const predictions = await predictionsCollection
-      .find({ raceWeekendId: raceId, type })
-      .toArray();
-
-    console.log(`[SCORING] Results entered for raceId: ${raceId}, type: ${type}`);
-    console.log(`[SCORING] Found ${predictions.length} predictions to score`);
-
-    let disqualifiedCount = 0;
-    const touchedUserIds = new Set<string>();
-
-    // Calculate score for each prediction (WITHOUT unexpected bonus - requires admin approval)
-    for (const prediction of predictions) {
-      console.log(`[SCORING] DEBUG: Processing prediction - raceWeekendId: ${prediction.raceWeekendId}, userId: "${prediction.userId}", type of userId: ${typeof prediction.userId}`);
-      touchedUserIds.add(prediction.userId);
-
-      if (isPredictionDisqualified(race, prediction, predictionType)) {
-        await scoresCollection.deleteOne({ userId: prediction.userId, raceId, type });
-        disqualifiedCount++;
-        console.log(`[SCORING] Disqualified late prediction for user ${prediction.userId}, raceId=${raceId}, type=${type}`);
-        continue;
-      }
-      
-      const currentScore = await scoresCollection.findOne({ userId: prediction.userId, raceId, type });
-      let unexpectedPoints = currentScore?.unexpectedPoints || 0; // Retain admin approval points
-      
-      // Use the shared scoring engine (single source of truth for point values)
-      const resultFields = {
-        p1: p1 || currentScore?.p1,
-        p2: p2 || currentScore?.p2,
-        p3: p3 || currentScore?.p3,
-        pole: pole || currentScore?.pole,
-        bestConstructor: bestConstructor || currentScore?.bestConstructor,
-      };
-      const scored = calculatePredictionScore(prediction, resultFields, type);
-
-      // For partial result updates, preserve existing points for fields not in this payload
-      const p1Points = (p1 !== undefined && p1 !== "") ? scored.p1Points : (currentScore?.p1Points || 0);
-      const p2Points = (p2 !== undefined && p2 !== "") ? scored.p2Points : (currentScore?.p2Points || 0);
-      const p3Points = (p3 !== undefined && p3 !== "") ? scored.p3Points : (currentScore?.p3Points || 0);
-      const polePoints = (pole !== undefined && pole !== "") ? scored.polePoints : (currentScore?.polePoints || 0);
-      const podiumBonusPoints = (resultFields.p1 && resultFields.p2 && resultFields.p3) ? scored.podiumBonusPoints : (currentScore?.podiumBonusPoints || 0);
-      const constructorPoints = (bestConstructor !== undefined && bestConstructor !== "") ? scored.constructorPoints : (currentScore?.constructorPoints || 0);
-
-      const total = p1Points + p2Points + p3Points + polePoints + podiumBonusPoints + unexpectedPoints + constructorPoints;
-
-      console.log(`[SCORING] User ${prediction.userId}: P1=${p1Points}, P2=${p2Points}, P3=${p3Points}, Pole=${polePoints}, Podium=${podiumBonusPoints}, Total=${total}`);
-
-      // Save or update score
-      console.log(`[SCORING] DEBUG: Saving score with userId type: ${typeof prediction.userId}, value: "${prediction.userId}"`);
-      const upsertResult = await scoresCollection.findOneAndUpdate(
-        { userId: prediction.userId, raceId, type },
-        {
-          $set: {
-            userId: prediction.userId,
-            raceId,
-            type,
-            p1Points,
-            p2Points,
-            p3Points,
-            polePoints,
-            podiumBonusPoints,
-            constructorPoints,
-            unexpectedPoints,
-            total,
-            updatedAt: new Date(),
-          },
-          $setOnInsert: {
-            createdAt: new Date(),
-          },
-        },
-        { upsert: true, returnDocument: "after" }
-      );
-      console.log(`[SCORING] DEBUG: Upsert result - userId in saved doc: "${upsertResult?.userId}", type: ${typeof upsertResult?.userId}`);
-    }
-
-    // Update total points in users collection and leaderboard
-    const scores = await scoresCollection.find({ raceId }).toArray();
-    console.log(`[SCORING] Found ${scores.length} scores to aggregate`);
-    const userIdsToUpdate = new Set<string>([
-      ...touchedUserIds,
-      ...scores.map((score) => score.userId),
-    ]);
-
-    for (const userId of userIdsToUpdate) {
-      await updateUserTotalPoints(db, userId);
-    }
+    // Manual results use the same idempotent scoring path as imported results.
+    const summary = await scoreStoredResult({ raceId, type, p1, p2, p3, pole, bestConstructor });
 
     res.json({
       success: true,
@@ -583,8 +505,8 @@ router.post("/results", async (req: Request, res: Response) => {
         id: result?.value?._id?.toString() || "unknown",
         raceId,
         type,
-        predictionsScored: predictions.length - disqualifiedCount,
-        disqualifiedPredictions: disqualifiedCount,
+        predictionsScored: summary.scored,
+        disqualifiedPredictions: summary.disqualified,
         message: "Results saved and predictions scored!",
       },
     });
@@ -592,6 +514,32 @@ router.post("/results", async (req: Request, res: Response) => {
     const message = error instanceof Error ? error.message : "Failed to save result";
     console.error("Admin save result error:", message);
     res.status(500).json({ success: false, error: message });
+  }
+});
+
+router.get("/results/sync-status", async (_req: Request, res: Response) => {
+  try {
+    const data = await getDB().collection("resultSync").find({}).toArray();
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Result sync status error:", error);
+    res.status(500).json({ success: false, error: "Failed to load result sync status" });
+  }
+});
+
+router.post("/results/:raceId/:type/resume-auto", async (req: Request, res: Response) => {
+  try {
+    const { raceId, type } = req.params;
+    if (!["race", "sprint"].includes(type)) return res.status(400).json({ success: false, error: "Invalid result type" });
+    const results = getDB().collection("results");
+    const current = await results.findOne({ raceId, type });
+    if (!current) return res.status(404).json({ success: false, error: "Result not found" });
+    await results.updateOne({ raceId, type }, { $set: { manualOverride: false, source: "jolpica" } });
+    await getDB().collection("resultSync").updateOne({ _id: raceId as any }, { $set: { nextAttemptAt: new Date(0) } }, { upsert: true });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Resume automatic results error:", error);
+    res.status(500).json({ success: false, error: "Failed to resume automatic results" });
   }
 });
 

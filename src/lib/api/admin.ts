@@ -56,6 +56,11 @@ export interface RaceResult {
   p2: string;
   p3: string;
   pole: string;
+  bestConstructor?: string;
+  source?: "jolpica" | "manual";
+  status?: "partial" | "complete";
+  manualOverride?: boolean;
+  syncedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -499,4 +504,25 @@ export async function seedDefaultRaces(): Promise<boolean> {
     console.error("Failed to seed races:", error);
     throw error;
   }
+}
+
+export interface ResultSyncStatus {
+  _id: string;
+  status?: "matched" | "unmatched" | "error";
+  roundId?: string;
+  lastCheckedAt?: string;
+  lastError?: string;
+}
+
+export async function getResultSyncStatus(): Promise<ResultSyncStatus[]> {
+  try {
+    const response = await client.request<{ success: boolean; data: ResultSyncStatus[] }>("/api/admin/results/sync-status");
+    return response.data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function resumeAutoResult(raceId: string, type: "race" | "sprint"): Promise<void> {
+  await client.request(`/api/admin/results/${encodeURIComponent(raceId)}/${type}/resume-auto`, { method: "POST" });
 }

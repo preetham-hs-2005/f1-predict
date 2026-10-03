@@ -27,7 +27,7 @@ import type { RaceWeekend } from "@/lib/data/raceCalendar";
 const STEPS = [
   { num: "01", label: "Pick podium, pole, constructor" },
   { num: "02", label: "Entries lock before session time" },
-  { num: "03", label: "Admin posts race result" },
+  { num: "03", label: "Matched race results update automatically" },
   { num: "04", label: "Leaderboard updates instantly" },
 ];
 

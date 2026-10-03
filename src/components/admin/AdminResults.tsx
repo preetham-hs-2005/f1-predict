@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { getAllRaces } from "@/lib/api/races";
 import { type RaceWeekend } from "@/lib/data/raceCalendar";
 import { useDrivers } from "@/hooks/useDrivers";
-import { getAdminResults, saveAdminResult, getAdminScores } from "@/lib/api/admin";
+import { getAdminResults, saveAdminResult, getAdminScores, getResultSyncStatus, resumeAutoResult, type ResultSyncStatus } from "@/lib/api/admin";
 import {
   Select,
   SelectContent,
@@ -21,6 +21,7 @@ const AdminResults = () => {
   const [resultType, setResultType] = useState<"race" | "sprint">("race");
   const [allResults, setAllResults] = useState<any[]>([]);
   const [allScores, setAllScores] = useState<any[]>([]);
+  const [syncStatus, setSyncStatus] = useState<ResultSyncStatus[]>([]);
   const [races, setRaces] = useState<RaceWeekend[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -43,9 +44,10 @@ const AdminResults = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [results, scores, serverRaces] = await Promise.all([getAdminResults(), getAdminScores(), getAllRaces()]);
+        const [results, scores, serverRaces, status] = await Promise.all([getAdminResults(), getAdminScores(), getAllRaces(), getResultSyncStatus()]);
         setAllResults(results);
         setAllScores(scores);
+        setSyncStatus(status);
         setRaces(serverRaces.map((race) => ({
           id: race.raceId,
           raceName: race.raceName,
@@ -74,10 +76,10 @@ const AdminResults = () => {
   const loadExisting = (raceId: string, type: "race" | "sprint") => {
     const result = allResults.find((r) => r.raceId === raceId && r.type === type);
     if (result) {
-      setP1(result.p1);
-      setP2(result.p2);
-      setP3(result.p3);
-      setPole(result.pole);
+      setP1(result.p1 || "");
+      setP2(result.p2 || "");
+      setP3(result.p3 || "");
+      setPole(result.pole || "");
       setBestConstructor(result.bestConstructor || "");
     } else {
       setP1("");
@@ -112,7 +114,8 @@ const AdminResults = () => {
 
     const result = { raceId: selectedRace, type: resultType, p1, p2, p3, pole, bestConstructor };
     try {
-      await saveAdminResult(result);
+      const saved = await saveAdminResult(result);
+      if (!saved) throw new Error("Result save failed");
       // Refresh results
       const [results, scores] = await Promise.all([getAdminResults(), getAdminScores()]);
       setAllResults(results);
@@ -124,14 +127,24 @@ const AdminResults = () => {
     }
   };
 
+  const handleResumeAuto = async () => {
+    try {
+      await resumeAutoResult(selectedRace, resultType);
+      setAllResults(await getAdminResults());
+      toast.success("Automatic result updates resumed");
+    } catch {
+      toast.error("Could not resume automatic updates");
+    }
+  };
+
 
 
 
   const completedResults = races
     .map((r) => ({
       race: r,
-      hasRace: !!allResults.find((res) => res.raceId === r.id && res.type === "race"),
-      hasSprint: r.sprintWeekend ? !!allResults.find((res) => res.raceId === r.id && res.type === "sprint") : null,
+      hasRace: !!allResults.find((res) => res.raceId === r.id && res.type === "race" && res.status === "complete"),
+      hasSprint: r.sprintWeekend ? !!allResults.find((res) => res.raceId === r.id && res.type === "sprint" && res.status === "complete") : null,
     }))
     .filter((r) => r.hasRace || r.hasSprint);
 
@@ -170,6 +183,20 @@ const AdminResults = () => {
 
         {race && (
           <>
+            <div className="mb-4 text-xs text-muted-foreground">
+              {existingResult ? (
+                <>
+                  {existingResult.source === "jolpica" ? "Automatic feed" : "Manual result"} · {existingResult.status || "complete"}
+                  {existingResult.syncedAt && ` · synced ${new Date(existingResult.syncedAt).toLocaleString()}`}
+                  {existingResult.manualOverride && " · manual override active"}
+                </>
+              ) : (
+                <>Sync: {syncStatus.find((item) => item._id === selectedRace)?.status || "awaiting check"}</>
+              )}
+              {syncStatus.find((item) => item._id === selectedRace)?.lastError && (
+                <p className="mt-1 text-destructive">Feed error: {syncStatus.find((item) => item._id === selectedRace)?.lastError}</p>
+              )}
+            </div>
             {/* Type selector for sprint weekends */}
             {race.sprintWeekend && (
               <div className="flex gap-2 mb-4">
@@ -249,8 +276,11 @@ const AdminResults = () => {
             </div>
 
             <Button onClick={handleSubmit} className="w-full" size="lg">
-              Save Results & Score Predictions
+              Save Manual Result & Score Predictions
             </Button>
+            {existingResult?.manualOverride && (
+              <Button onClick={handleResumeAuto} variant="outline" className="mt-2 w-full">Resume automatic updates</Button>
+            )}
           </>
         )}
       </section>

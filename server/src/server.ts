@@ -49,6 +49,7 @@ import { appUrl } from "./utils/appUrl.js";
 import { verifyToken } from "./utils/jwt.js";
 import { queueDueReminders } from "./services/reminders.js";
 import { sendQueuedEmails } from "./services/mail.js";
+import { syncDueResults } from "./services/resultSync.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -61,10 +62,17 @@ async function reminderTick() {
   if (reminderTickRunning) return;
   reminderTickRunning = true;
   try {
-    await queueDueReminders();
-    await sendQueuedEmails();
-  } catch (error) {
-    console.error("In-process reminder tick failed:", error);
+    try {
+      await queueDueReminders();
+      await sendQueuedEmails();
+    } catch (error) {
+      console.error("In-process reminder tick failed:", error);
+    }
+    try {
+      await syncDueResults();
+    } catch (error) {
+      console.error("In-process results sync failed:", error);
+    }
   } finally {
     reminderTickRunning = false;
   }
