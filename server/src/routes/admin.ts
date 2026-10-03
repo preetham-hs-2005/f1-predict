@@ -1346,12 +1346,27 @@ router.post("/races/seed/default", async (req: Request, res: Response) => {
       { raceId: "abudhabi-2026", raceName: "Abu Dhabi Grand Prix", round: 24, countryFlag: "🇦🇪", circuitName: "Yas Marina Circuit", qualifyingStartTime: "2026-12-05T14:00:00Z", raceStartTime: "2026-12-06T13:00:00Z", timeZone: "Asia/Dubai", sprintWeekend: false, cancelled: false },
     ];
     
+    // Current 2026 order after the April cancellations and Malaysia replacement.
+    const officialOrder = ["australia-2026", "china-2026", "japan-2026", "miami-2026", "canada-2026",
+      "monaco-2026", "spain-2026", "austria-2026", "britain-2026", "belgium-2026", "hungary-2026",
+      "dutch-2026", "italy-2026", "madrid-2026", "azerbaijan-2026", "bahrain-2026",
+      "singapore-2026", "usa-2026", "mexico-2026", "brazil-2026", "vegas-2026", "qatar-2026", "abudhabi-2026"];
+    const currentRaces = defaultRaces.filter((race) => officialOrder.includes(race.raceId)).map((race) => ({
+      ...race,
+      round: officialOrder.indexOf(race.raceId) + 1,
+      ...(race.raceId === "bahrain-2026" ? {
+        raceName: "Bahrain Grand Prix in Malaysia", circuitName: "Sepang International Circuit",
+        qualifyingStartTime: "2026-10-03T08:00:00Z", raceStartTime: "2026-10-04T07:00:00Z",
+        timeZone: "Asia/Kuala_Lumpur",
+      } : {}),
+    }));
+
     // Clear existing races
     await racesCollection.deleteMany({});
     
     // Insert default races
     const result = await racesCollection.insertMany(
-      defaultRaces.map((race) => ({
+      currentRaces.map((race) => ({
         ...race,
         createdAt: new Date(),
         updatedAt: new Date(),

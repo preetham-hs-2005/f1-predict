@@ -6,21 +6,32 @@ import { absoluteSessionDate } from "../utils/raceTime.js";
 const BASE = "https://api.jolpi.ca/f1/alpha";
 type Kind = "race" | "sprint";
 interface Race { raceId: string; raceName: string; circuitName?: string; raceStartTime?: string; qualifyingStartTime?: string; sprintQualifyingStartTime?: string; sprintWeekend?: boolean; cancelled?: boolean; jolpicaRoundId?: string }
-interface ScheduleEvent { round: { id: string; name: string; is_cancelled: boolean }; circuit: { name: string; country_flag?: string }; schedule: { code: string; timestamp: string }[] }
+interface ScheduleEvent { round: { id: string; number?: number | null; name: string; is_cancelled: boolean }; circuit: { name: string; country_flag?: string }; schedule: { code: string; timestamp: string }[] }
 interface Entry { driver: { abbreviation: string; permanent_car_number?: number }; team: { name: string }; position: number | null; is_classified: boolean; points?: number }
 interface FeedResult { data?: { code: string; results: Entry[]; round: { id: string }; timestamp: string } }
 const clean = (s: string) => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const tokens = (s: string) => clean(s).split(" ").filter((x) => x.length > 3 && !["grand", "prix", "circuit", "international", "autodromo", "street", "raceway"].includes(x));
+// 2026 has two Spanish events. These aliases identify the venue as well as the name.
+const feedAliases: Record<string, { name: string; circuit: string; localCircuits: string[] }> = {
+  "spain-2026": { name: "Barcelona Grand Prix", circuit: "Circuit de Barcelona-Catalunya", localCircuits: ["Circuit de Barcelona-Catalunya"] },
+  "madrid-2026": { name: "Spanish Grand Prix", circuit: "Madring", localCircuits: ["Madrid Circuit", "Madring"] },
+  "brazil-2026": { name: "Brazilian Grand Prix", circuit: "Autódromo José Carlos Pace", localCircuits: ["Interlagos Circuit", "Autódromo José Carlos Pace"] },
+  "qatar-2026": { name: "Qatar Grand Prix", circuit: "Lusail International Circuit", localCircuits: ["Losail International Circuit", "Lusail International Circuit"] },
+};
 
 export function matchEvent(race: Race, events: ScheduleEvent[]): ScheduleEvent | null {
   const date = absoluteSessionDate(race.raceStartTime);
-  // Nonstandard/custom event names remain manual even if a feed mirrors the same label.
-  if (!date || race.cancelled || !/grand prix$/i.test(race.raceName.trim())) return null;
+  const alias = feedAliases[race.raceId];
+  // Only the verified 2026 Malaysia replacement may use a nonstandard race name.
+  if (!date || race.cancelled || (!/grand prix$/i.test(race.raceName.trim()) &&
+    !(race.raceId === "bahrain-2026" && race.raceName === "Bahrain Grand Prix in Malaysia"))) return null;
+  if (alias && !alias.localCircuits.some((circuit) => clean(circuit) === clean(race.circuitName || ""))) return null;
   const matches = events.filter((event) => {
-    if (event.round.is_cancelled || clean(event.round.name) !== clean(race.raceName)) return false;
+    if (event.round.is_cancelled || clean(event.round.name) !== clean(alias?.name || race.raceName)) return false;
     const start = event.schedule.find((s) => s.code === "R")?.timestamp;
     if (!start || Math.abs(new Date(start).getTime() - date.getTime()) > 36 * 60 * 60_000) return false;
-    const localTokens = tokens(race.circuitName || "");
+    if (alias && clean(event.circuit.name) !== clean(alias.circuit)) return false;
+    const localTokens = tokens(alias?.circuit || race.circuitName || "");
     const remoteTokens = tokens(event.circuit.name);
     return localTokens.some((t) => remoteTokens.includes(t)) || localTokens.length === 0;
   });
@@ -118,7 +129,10 @@ async function syncRace(race: Race, event: ScheduleEvent, now: Date): Promise<vo
       );
     }
   }
-  await db.collection<Race>("races").updateOne({ raceId: race.raceId }, { $set: { jolpicaRoundId: event.round.id } });
+  await db.collection<Race>("races").updateOne({ raceId: race.raceId }, { $set: {
+    jolpicaRoundId: event.round.id,
+    ...(Number.isInteger(event.round.number) && (event.round.number || 0) > 0 ? { round: event.round.number } : {}),
+  } });
 }
 
 export async function syncDueResults(now = new Date()): Promise<void> {
