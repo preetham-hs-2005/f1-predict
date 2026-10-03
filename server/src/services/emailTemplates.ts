@@ -102,6 +102,6 @@ export function raceWeekEmail(name: string, raceName: string, circuitName: strin
   return layout({ eyebrow: "Race week", title: `${raceName} is coming up.`, greeting: `Hi ${name},`, paragraphs: [`It's race week at ${circuitName}. Here's the schedule so you can plan your predictions.`], button: "Make predictions", url: dashboardUrl, details: sessions, note: "All session times shown in India time (IST)." });
 }
 
-export function qualifyingEmail(name: string, raceName: string, sessionLabel: string, sessionTime: string, predictionUrl: string): EmailContent {
-  return layout({ eyebrow: "One-hour reminder", title: `${sessionLabel} starts soon.`, greeting: `Hi ${name},`, paragraphs: [`${raceName} ${sessionLabel.toLowerCase()} starts in about one hour. Submit your prediction before the session begins.`], button: "Make prediction", url: predictionUrl, details: [{ label: "Session", value: sessionLabel }, { label: "Starts", value: sessionTime }], note: "Session time shown in India time (IST)." });
+export function qualifyingEmail(name: string, raceName: string, sessionLabel: string, sessionTime: string, predictionUrl: string, minutesUntil = 60): EmailContent {
+  return layout({ eyebrow: "Qualifying reminder", title: `${sessionLabel} starts soon.`, greeting: `Hi ${name},`, paragraphs: [`${raceName} ${sessionLabel.toLowerCase()} starts in about ${minutesUntil} minutes. Submit your prediction before the session begins.`], button: "Make prediction", url: predictionUrl, details: [{ label: "Session", value: sessionLabel }, { label: "Starts", value: sessionTime }], note: "Session time shown in India time (IST)." });
 }

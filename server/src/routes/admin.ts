@@ -16,6 +16,7 @@ import {
   OpenF1Session,
 } from "../services/openf1Service.js";
 import { calculatePredictionScore } from "../utils/scoring.js";
+import { absoluteSessionDate } from "../utils/raceTime.js";
 
 const router = Router();
 let lastRaceEnrichmentRateLimitLogAt = 0;
@@ -1438,6 +1439,10 @@ router.post("/races", async (req: Request, res: Response) => {
     if (!raceId || !raceName || !round || !qualifyingStartTime || !raceStartTime) {
       return res.status(400).json({ success: false, error: "Missing required fields" });
     }
+    if (!absoluteSessionDate(qualifyingStartTime) || !absoluteSessionDate(raceStartTime) ||
+        (sprintQualifyingStartTime && !absoluteSessionDate(sprintQualifyingStartTime))) {
+      return res.status(400).json({ success: false, error: "Session times must include a timezone offset or Z" });
+    }
     
     // Check if race already exists
     const existing = await racesCollection.findOne({ raceId });
@@ -1511,6 +1516,12 @@ router.put("/races/:raceId", async (req: Request, res: Response) => {
       isLocked,
       isComplete
     } = req.body;
+
+    if ((qualifyingStartTime !== undefined && !absoluteSessionDate(qualifyingStartTime)) ||
+        (raceStartTime !== undefined && !absoluteSessionDate(raceStartTime)) ||
+        (sprintQualifyingStartTime && !absoluteSessionDate(sprintQualifyingStartTime))) {
+      return res.status(400).json({ success: false, error: "Session times must include a timezone offset or Z" });
+    }
     
     if (round !== undefined && round !== null) {
       const oldRound = Number(existing.round);

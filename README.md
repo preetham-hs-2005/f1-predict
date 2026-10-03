@@ -9,7 +9,7 @@ Set `SMTP_FROM="F1 Predictor Pro <noreply@f1predict.dev>"` in the backend enviro
 To review the email designs with a registered account, run `npm run preview:emails -- user@example.com` from `server/`. This sends four clearly labelled preview messages (welcome, race week, Grand Prix qualifying, sprint qualifying) and one real password-reset email. The reset link expires after 30 minutes and replaces any earlier reset link. Use this only for an address you control.
 Add `--skip-reset` to send just the four preview messages without replacing an existing reset link.
 
-The Monday race-week email is scheduled for 9:00 AM Asia/Kolkata. Grand Prix and sprint qualifying reminders are queued from one hour until 45 minutes before each session; a runner that is down for that window skips those alerts. GitHub's free schedule may be delayed or skipped, so exact delivery time is not guaranteed. In-app alerts are stored until read and are visible from the navigation bell. Configure `VITE_API_URL` in the frontend to point to the deployed API. No email can be delivered until the Resend key is configured.
+The Monday race-week email is scheduled for 9:00 AM Asia/Kolkata. Grand Prix and sprint qualifying reminders are queued during the hour before each session and expire when the session starts. GitHub's free schedule may be delayed or skipped, so exact delivery time is not guaranteed. Admin race date and time fields are entered in India time and saved as absolute UTC timestamps. In-app alerts are stored until read and are visible from the navigation bell. Configure `VITE_API_URL` in the frontend to point to the deployed API. No email can be delivered until the Resend key is configured.
 
 ## Search visibility
 

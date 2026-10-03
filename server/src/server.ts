@@ -47,11 +47,28 @@ import { Driver } from "./models/Driver.js";
 import { User } from "./models/User.js";
 import { appUrl } from "./utils/appUrl.js";
 import { verifyToken } from "./utils/jwt.js";
+import { queueDueReminders } from "./services/reminders.js";
+import { sendQueuedEmails } from "./services/mail.js";
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const PORT = process.env.PORT || 3000;
+let reminderTickRunning = false;
+let reminderTimer: NodeJS.Timeout | undefined;
+
+async function reminderTick() {
+  if (reminderTickRunning) return;
+  reminderTickRunning = true;
+  try {
+    await queueDueReminders();
+    await sendQueuedEmails();
+  } catch (error) {
+    console.error("In-process reminder tick failed:", error);
+  } finally {
+    reminderTickRunning = false;
+  }
+}
 
 // WebSocket connection management
 interface ClientInfo {
@@ -223,6 +240,8 @@ async function startServer() {
     server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`🔌 WebSocket available at ws://localhost:${PORT}`);
+      void reminderTick();
+      reminderTimer = setInterval(() => { void reminderTick(); }, 60_000);
     });
   } catch (error) {
     console.error("Failed to start server:", error);
@@ -233,6 +252,7 @@ async function startServer() {
 // Graceful shutdown handlers
 async function gracefulShutdown(signal: string) {
   console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
+  if (reminderTimer) clearInterval(reminderTimer);
   server.close(async () => {
     console.log("HTTP/WebSocket server closed.");
     await closeDB();

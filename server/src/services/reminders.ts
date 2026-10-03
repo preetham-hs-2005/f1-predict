@@ -4,6 +4,7 @@ import { qualifyingEmail, raceWeekEmail } from "./emailTemplates.js";
 import type { UserDocument } from "../models/User.js";
 import type { ObjectId } from "mongodb";
 import { appUrl } from "../utils/appUrl.js";
+import { absoluteSessionDate } from "../utils/raceTime.js";
 
 export interface Race {
   raceId: string;
@@ -39,12 +40,7 @@ const calendarDate = (date: Date, timeZone: string) => {
   const part = (type: string) => parts.find((value) => value.type === type)!.value;
   return `${part("year")}-${part("month")}-${part("day")}`;
 };
-const validDate = (value?: string | null) => {
-  // Reminder times must be absolute; an offset-free value depends on the worker's local time zone.
-  if (!value || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-};
+const validDate = absoluteSessionDate;
 
 export function mondaySendAt(raceStart: Date, raceTimeZone = "Asia/Kolkata"): Date {
   const [year, month, day] = calendarDate(raceStart, raceTimeZone).split("-").map(Number);
@@ -57,7 +53,7 @@ export function dueQualifyingSessions(race: Race, now: Date) {
   return ([
     { type: "race", label: "Grand Prix qualifying", start: validDate(race.qualifyingStartTime) },
     ...(race.sprintWeekend ? [{ type: "sprint", label: "Sprint qualifying", start: validDate(race.sprintQualifyingStartTime) }] : []),
-  ]).filter((session) => session.start && now >= new Date(session.start.getTime() - 60 * 60_000) && now < new Date(session.start.getTime() - 45 * 60_000));
+  ]).filter((session) => session.start && now >= new Date(session.start.getTime() - 60 * 60_000) && now < session.start);
 }
 
 export async function queueDueReminders(now = new Date()): Promise<void> {
@@ -91,13 +87,14 @@ export async function queueDueReminders(now = new Date()): Promise<void> {
       for (const session of sessions) {
         const key = `qualifying:${race.raceId}:${session.type}:${id}`;
         const url = `/predict/${encodeURIComponent(race.raceId)}/${session.type}`;
-        const body = `${race.raceName} ${session.label} starts in one hour. Make your prediction before the window closes.`;
+        const minutesUntil = Math.max(1, Math.ceil((session.start!.getTime() - now.getTime()) / 60_000));
+        const body = `${race.raceName} ${session.label} starts in about ${minutesUntil} minutes. Make your prediction before the window closes.`;
         await db.collection<NotificationDocument>("notifications").updateOne(
           { key },
           { $setOnInsert: { key, userId: id, title: "Prediction deadline approaching", body, url, createdAt: now } },
           { upsert: true },
         );
-        await queueEmail({ key, to: user.email, subject: `One hour until ${session.label}: ${race.raceName}`, ...qualifyingEmail(user.name, race.raceName, session.label, session.start!.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }), `${appUrl()}${url}`), expiresAt: session.start! });
+        await queueEmail({ key, to: user.email, subject: `${session.label} starts soon: ${race.raceName}`, ...qualifyingEmail(user.name, race.raceName, session.label, session.start!.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }), `${appUrl()}${url}`, minutesUntil), expiresAt: session.start! });
       }
     }
   }

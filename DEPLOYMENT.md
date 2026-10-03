@@ -31,9 +31,9 @@ This repository is public, so standard GitHub-hosted Actions runners are free. T
 
 - Generate a unique random `REMINDER_JOB_SECRET` of at least 32 characters. Add it to the **Render web service** Environment and to this GitHub repository's **Actions repository secrets** with exactly the same name and value. Never add it to Git, Vercel, or browser code.
 - In GitHub Actions, enable the `Race reminders` workflow and use **Run workflow** once to verify its response is `{"success":true}`. The workflow uses a `2/5 * * * *` UTC schedule. Leave the Render web service's health-check path at `/health`.
-- Do not create a second scheduled runner for the same job.
+- The API also checks reminders once per minute while its process is awake. MongoDB keys and mail leases make overlapping runs safe. Render Free can sleep when idle, so this check cannot replace an external schedule.
 
-MongoDB keys prevent duplicate notices. The Monday race-week email is scheduled at 09:00 India time. Qualifying emails and in-app notices are queued from one hour until 45 minutes before the session to tolerate startup and schedule delays. A delayed or failed run outside that window skips the time-sensitive alert. Cancelled and completed races, sessions already started, and race times without a time zone are skipped. Make sure the race calendar is accurate before enabling the workflow.
+MongoDB keys prevent duplicate notices. The Monday race-week email is scheduled at 09:00 India time. Qualifying emails and in-app notices are queued during the full hour before the session. A delayed or failed run after the session starts skips the time-sensitive alert. Cancelled and completed races, sessions already started, and race times without a time zone are skipped. Admin race times are entered in India time and saved with an explicit UTC offset. Make sure the race calendar is accurate before enabling the workflow.
 
 GitHub scheduled runs can be delayed or dropped during high load, and public-repository schedules are disabled after 60 days without repository activity. This free setup cannot guarantee exact one-hour timing; check Actions run history before race weekends. Render Cron Jobs or an always-on worker provide more predictable timing but require a paid plan.
 

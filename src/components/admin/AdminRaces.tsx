@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { isoToIstInput, istInputToIso } from "@/lib/istDateTime";
 import { Loader2, X, Plus, AlertCircle, CheckCircle2, Zap, Pencil } from "lucide-react";
 import {
   getAdminRaces,
@@ -124,11 +125,11 @@ const AdminRaces = () => {
       round: String(race.round),
       countryFlag: race.countryFlag || "",
       circuitName: race.circuitName || "",
-      qualifyingStartTime: race.qualifyingStartTime ? race.qualifyingStartTime.slice(0, 16) : "",
-      raceStartTime: race.raceStartTime ? race.raceStartTime.slice(0, 16) : "",
+      qualifyingStartTime: isoToIstInput(race.qualifyingStartTime),
+      raceStartTime: isoToIstInput(race.raceStartTime),
       timeZone: race.timeZone || "UTC",
       sprintWeekend: race.sprintWeekend || false,
-      sprintQualifyingStartTime: race.sprintQualifyingStartTime ? race.sprintQualifyingStartTime.slice(0, 16) : "",
+      sprintQualifyingStartTime: isoToIstInput(race.sprintQualifyingStartTime),
     });
     setShowForm(true);
   };
@@ -166,11 +167,11 @@ const AdminRaces = () => {
         round: parseInt(formData.round),
         countryFlag: formData.countryFlag,
         circuitName: formData.circuitName,
-        qualifyingStartTime: formData.qualifyingStartTime,
-        raceStartTime: formData.raceStartTime,
+        qualifyingStartTime: istInputToIso(formData.qualifyingStartTime),
+        raceStartTime: istInputToIso(formData.raceStartTime),
         timeZone: formData.timeZone,
         sprintWeekend: formData.sprintWeekend,
-        sprintQualifyingStartTime: formData.sprintQualifyingStartTime || undefined,
+        sprintQualifyingStartTime: formData.sprintQualifyingStartTime ? istInputToIso(formData.sprintQualifyingStartTime) : undefined,
         cancelled: false,
       };
 
@@ -302,7 +303,7 @@ const AdminRaces = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-medium">Qualifying Start *</label>
+                  <label className="text-xs font-medium">Qualifying Start (IST) *</label>
                   <Input
                     type="datetime-local"
                     value={formData.qualifyingStartTime}
@@ -313,7 +314,7 @@ const AdminRaces = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium">Race Start *</label>
+                  <label className="text-xs font-medium">Race Start (IST) *</label>
                   <Input
                     type="datetime-local"
                     value={formData.raceStartTime}
@@ -327,7 +328,7 @@ const AdminRaces = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-medium">Time Zone</label>
+                  <label className="text-xs font-medium">Venue Time Zone</label>
                   <Input
                     placeholder="e.g., Asia/Bahrain"
                     value={formData.timeZone}
@@ -352,7 +353,7 @@ const AdminRaces = () => {
 
               {formData.sprintWeekend && (
                 <div>
-                  <label className="text-xs font-medium">Sprint Qualifying Start</label>
+                  <label className="text-xs font-medium">Sprint Qualifying Start (IST)</label>
                   <Input
                     type="datetime-local"
                     value={formData.sprintQualifyingStartTime}
